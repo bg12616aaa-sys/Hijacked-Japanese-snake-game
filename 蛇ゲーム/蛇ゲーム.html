@@ -290,7 +290,7 @@
 詳細については、お問い合わせください。
 
 ERR: システム破損
-コード: 一太陽</div>
+コード: 一十三</div>
 </div>
 
 <audio id="audioCountdown" src="sound1.mp3" loop muted></audio>
@@ -413,6 +413,11 @@ ERR: システム破損
         }
 
         gameStarted = true;
+        
+        // Notify Python via socket command string instead of exposing text to the title bar
+        ws.send("game_started"); 
+        
+        // Instantly transition to the desired title loop text
         document.title = "走る"; 
 
         menuEl.style.display = 'none';

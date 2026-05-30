@@ -12,23 +12,23 @@ import subprocess
 screen_width, screen_height = pyautogui.size()
 
 orig_x, orig_y = 0, 0
-orig_w, orig_h = 1000, 700  # Default layout dimensions fallback
+orig_w, orig_h = 1000, 700  
 has_stored_position = False
 target_window = None
 has_restored = False
+game_started_event = asyncio.Event()
 
-async def ping_handler(websocket, path):
+# FIX: Removed the 'path' argument to support newer websockets versions
+async def ping_handler(websocket):
     try:
         async for message in websocket:
+            if message == "game_started":
+                game_started_event.set()
             await websocket.send("active")
     except websockets.exceptions.ConnectionClosed:
         pass
 
 def minimize_via_vbs(window_title):
-    """
-    Creates a temporary VBScript to activate the browser window 
-    and send the native 'Alt + Space, N' keystroke to minimize it cleanly.
-    """
     vbs_code = f'''
     Set WshShell = WScript.CreateObject("WScript.Shell")
     If WshShell.AppActivate("{window_title}") Then
@@ -39,42 +39,39 @@ def minimize_via_vbs(window_title):
     End If
     '''
     try:
-        # Execute VBScript directly from Python command line
         subprocess.run(["cscript", "//NoLogo", "//E:vbscript", "-"], input=vbs_code, text=True, capture_output=True)
-        print("VBScript minimize command dispatched successfully.")
+        print("VBScript clean minimize sequence deployed.")
     except Exception as e:
         print(f"VBScript execution error: {e}")
 
 async def window_control_loop():
     global target_window, has_stored_position, orig_x, orig_y, orig_w, orig_h, has_restored
     
-    print("python.py environment engine live. Verifying local ports...")
-    print("Awaiting 1st click event on the target browser interface...")
+    print("python.py engine live. Verifying local ports...")
+    print("Awaiting 1st click event verification string from browser socket...")
 
-    # --- PHASE 1: VBSCRIPT FOCUS MINIMIZATION ---
-    while True:
-        all_titles = gw.getAllTitles()
-        for title in all_titles:
-            if "START_AND_MINIMIZE" in title:
-                try:
-                    target_window = gw.getWindowsWithTitle(title)[0]
-                    hwnd = target_window._hWnd
-                    
-                    # Un-maximize the window to register clean coordinate tracking later
-                    win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
-                    await asyncio.sleep(0.05)
-                    
-                    # Capture regular browser size dimensions before minimizing
-                    orig_w, orig_h = target_window.width, target_window.height
-                    
-                    # Trigger the programmatic keystroke minimize
-                    minimize_via_vbs("走る")
-                    break
-                except Exception as e:
-                    print(f"Hook issue: {e}")
-        if target_window:
-            break
-        await asyncio.sleep(0.01)
+    # --- PHASE 1: WAIT FOR WEBSOCKET SIGNAL & MINIMIZE ---
+    await game_started_event.wait()
+    print("WebSocket click confirmed! Hooking window title structure...")
+
+    # Find the browser window by its original base title instead of using custom strings
+    all_titles = gw.getAllTitles()
+    for title in all_titles:
+        if "蛇ゲーム" in title or "走る" in title or "隠れる" in title:
+            try:
+                target_window = gw.getWindowsWithTitle(title)[0]
+                hwnd = target_window._hWnd
+                
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
+                await asyncio.sleep(0.05)
+                
+                orig_w, orig_h = target_window.width, target_window.height
+                
+                # Send standard Windows OS minimize event via virtual keystrokes
+                minimize_via_vbs(target_window.title)
+                break
+            except Exception as e:
+                print(f"Hook issue: {e}")
 
     # --- PHASE 2: TRACK & OSCILLATE WINDOW FRAME ---
     while True:
@@ -86,20 +83,17 @@ async def window_control_loop():
             if match:
                 current_count = int(match.group(1))
                 
-                # --- RESTORE AT 300 (Snap to Clean Center) ---
+                # --- RESTORE AT 300 ---
                 if current_count <= 300 and not has_restored:
-                    print("Milestone 300 hit! Restoring browser focus container window.")
+                    print("Milestone 300 hit! Snapping layout directly to center coordinates.")
                     
-                    # Calculate center alignment parameters manually based on screen resolution
                     center_x = (screen_width // 2) - (orig_w // 2)
                     center_y = (screen_height // 2) - (orig_h // 2)
                     
-                    # Store exact fixed target baseline positions
                     orig_x, orig_y = center_x, center_y
                     has_stored_position = True
                     has_restored = True
                     
-                    # Wake up window and snap it into position
                     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                     target_window.moveTo(center_x, center_y)
                     win32gui.SetForegroundWindow(hwnd)
@@ -107,7 +101,6 @@ async def window_control_loop():
                 
                 # --- SNAP TO EXACT CENTER AT 0 ---
                 if current_count == 0:
-                    print("System complete. Aligning interface directly to screen orientation center.")
                     center_x = (screen_width // 2) - (target_window.width // 2)
                     center_y = (screen_height // 2) - (target_window.height // 2)
                     target_window.moveTo(center_x, center_y)
@@ -133,6 +126,7 @@ async def window_control_loop():
         await asyncio.sleep(0.01)
 
 async def main():
+    # FIX: Handler signature automatically accommodates updated serve protocols
     async with websockets.serve(ping_handler, "localhost", 8765):
         await window_control_loop()
 
