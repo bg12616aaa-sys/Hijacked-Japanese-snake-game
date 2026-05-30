@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蛇ゲーム</title>
+    <style>
+        /* Base countdown font */
+        @font-face {
+            font-family: 'Font1';
+            src: url('font1.ttf') format('truetype');
+        }
+
+        /* Aftermath font restricted strictly to Japanese Unicode ranges */
+        @font-face {
+            font-family: 'Font2';
+            src: url('font2.ttf') format('truetype');
+            unicode-range: U+3000-303F, U+3040-309F, U+30A0-30FF, U+FF00-FFEF, U+4E00-9FAF;
+        }
+
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Font1', 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.05s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        /* Fake Snake Game Main Menu Overlay */
+        #menu-container {
+            text-align: center;
+            position: absolute;
+            z-index: 100;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+            user-select: none;
+        }
+
+        #menu-title {
+            font-size: 5rem;
+            color: #4caf50; /* Arcade Green */
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+        }
+
+        #menu-subtitle {
+            font-size: 1.8rem;
+            color: #888;
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        /* Game Elements Container */
+        #container {
+            text-align: center;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        #counter {
+            font-size: 3.5rem;
+            font-weight: bold;
+            display: none; 
+            transition: color 0.1s ease;
+            white-space: nowrap;
+            font-family: 'Font1', 'Courier New', Courier, monospace;
+        }
+
+        /* Aftermath layout styling */
+        #message {
+            font-size: 3.5rem;
+            display: none;
+            color: #ff3333;
+            font-weight: bold;
+            line-height: 1.5;
+            text-shadow: 0px 0px 15px rgba(255, 0, 0, 0.7);
+            word-break: break-all;
+            max-width: 90vw;
+            transition: color 1s ease, text-shadow 1s ease;
+        }
+
+        .use-font1 {
+            font-family: 'Font1', 'Courier New', Courier, monospace !important;
+        }
+
+        .use-font2 {
+            font-family: 'Font2', 'Font1', 'Courier New', Courier, monospace !important;
+        }
+
+        .bg-word {
+            position: absolute;
+            z-index: -1;
+            color: rgba(255, 0, 0, 0.6);
+            font-weight: bold;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Simulated Windows VBS Error Box Styles */
+        #vbs-modal {
+            display: none;
+            position: absolute;
+            z-index: 200;
+            width: 420px;
+            background-color: #f0f0f0;
+            border: 1px solid #707070;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #000;
+            text-align: left;
+            user-select: none;
+        }
+
+        #vbs-header {
+            background: linear-gradient(to right, #184984, #4b92e7);
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #vbs-close {
+            background-color: #e81123;
+            color: #fff;
+            border: none;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #vbs-body {
+            padding: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            background-color: #f0f0f0;
+        }
+
+        #vbs-icon {
+            width: 32px;
+            height: 32px;
+            background-color: #d13438;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+
+        #vbs-text {
+            font-size: 0.9rem;
+            line-height: 1.3;
+            word-break: break-all;
+            max-width: 320px;
+        }
+
+        #vbs-footer {
+            background-color: #f0f0f0;
+            padding: 10px;
+            text-align: center;
+            border-top: 1px solid #dfdfdf;
+        }
+
+        #vbs-btn {
+            padding: 4px 25px;
+            background-color: #e1e1e1;
+            border: 1px solid #adadad;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        #vbs-btn:hover {
+            background-color: #e5f1fb;
+            border-color: #0078d7;
+        }
+
+        /* Jumpscare Image Styling */
+        #scary-image {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+            background-color: #000;
+            z-index: 300;
+            opacity: 1;
+            transition: opacity 1s ease;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Full Screen In-Page Custom Error Container */
+        #custom-error-screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            color: #fff;
+            font-family: 'MS Gothic', 'Courier New', Courier, monospace;
+            padding: 40px;
+            box-sizing: border-box;
+            z-index: 400;
+            text-align: left;
+            user-select: none;
+            cursor: default;
+        }
+
+        #custom-error-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ff3333;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #ff3333;
+            padding-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        #custom-error-text {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        /* Blinking retro animation for menu text */
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(3px, 3px) rotate(0deg); }
+            10% { transform: translate(-3px, -4px) rotate(-1deg); }
+            20% { transform: translate(-5px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 4px) rotate(0deg); }
+            40% { transform: translate(3px, -3px) rotate(1deg); }
+            50% { transform: translate(-3px, 4px) rotate(-1deg); }
+            60% { transform: translate(-5px, 3px) rotate(0deg); }
+            70% { transform: translate(4px, 3px) rotate(-1deg); }
+            80% { transform: translate(-3px, -3px) rotate(1deg); }
+            100% { transform: translate(3px, -4px) rotate(0deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="menu-container">
+    <div id="menu-title">蛇ゲーム</div>
+    <div id="menu-subtitle">どこでもクリックして再生</div>
+</div>
+
+<div id="container">
+    <div id="counter">He is 500 miles away from you...</div>
+    <div id="message">ここは安全ではありません…<br>どうかここから出て行ってください…</div>
+</div>
+
+<div id="vbs-modal">
+    <div id="vbs-header">
+        <span>Error</span>
+        <button id="vbs-close" onclick="handleVbsClose()">✕</button>
+    </div>
+    <div id="vbs-body">
+        <div id="vbs-icon">✕</div>
+        <div id="vbs-text">W̵̱̖̱̞͚̊ͬ̑̉̄̆̐̓̚Ḫ̷̶̶̹̦͈̪̟̟̭̥̼͓̲̬͓̫̐̿͋͒̐ͩ̍̈̆ͨ̂͌̅̄̕͢͜͠ͅǍ̛̩͇̬̃_̵̷̶̨̰̺ͣͪͩ̎T̰̉_̢̜͖̗̯̣ͮ̀ͣ̈́ͬ̍̉̕̕͢͞_̴̢̱̮͈͓̭͈̗̲̝ͪ̐͆ͦ͂ͨ̊ͬͧͪ͑̍͂̾ͩͩͣ̕͡͞ͅḨ̸̴̷̴̨̼̼̝̦̯͈͉ͣ̂͛̍̎̑ͫ͛A̶̴̴̷̢̛̯̼̖̫̱͈̗̪̬̬̺̳̳̰̭̬͛ͣ͐͆̐͗ͫ̂́ͫͪ̿̚͟͜ͅV̺̐̋͞_̶̝͙̣͛ͣ_̠̻͕̜̝̗ͫ̒ͫ̉͛͑ͣ̑͊̕E͇ͣ__̸̬͚̰ͧͮ͊̋̈́͂ͩ͛͆́̏͒̒͝͝Y̯̱̦ͤƠ̶̸̧̢̪̮͉̥̘̝̙̦̜̞̟̭͋̐̍̔̃̀͛ͥ̔̽ͫͮ͑ͯ̈̄ͮ͝ͅƯ̶̶̷̫̲͔̟͇̘ͪ̓̿͂̿̆͋̊ͮ͌ͤ̇ͬ̌̈́̕͡͡͝_ͮD̴̺͎̺̜̗̫͖͍̫͋̈́͋̾̏̐̕͡͡Ö̠̲́ͣ̓ͭͧͩͨṆ̙̳ͦͥ̃̾̀̀͟E̴̵̜̮̯̫̥͚̫̫̲̗͍̺̥̭̿ͥ̅͒ͦͭ̇̃ͪ̃̆̈́́̈́ͬ͆̏ͧ́ͬ̀̊̚͘͘͜͝͡͝͝ͅ</div>
+    </div>
+    <div id="vbs-footer">
+        <button id="vbs-btn" onclick="handleVbsClose()">OK</button>
+    </div>
+</div>
+
+<img id="scary-image" src="background.png" alt="">
+
+<div id="custom-error-screen">
+    <div id="custom-error-title">システムエラー</div>
+    <div id="custom-error-text">ゲームの再読み込み中にエラーが発生しました。
+詳細については、お問い合わせください。
+
+ERR: システム破損
+コード: 一十三</div>
+</div>
+
+<audio id="audioCountdown" src="sound1.mp3" loop muted></audio>
+<audio id="audioAftermath" src="sound2.mp3"></audio>
+<audio id="audioSpeech" src="sound3.mp3"></audio>
+<audio id="audioError" src="game over.mp3"></audio>
+
+<script>
+    const menuEl = document.getElementById('menu-container');
+    const counterEl = document.getElementById('counter');
+    const messageEl = document.getElementById('message');
+    const vbsModalEl = document.getElementById('vbs-modal');
+    const scaryImgEl = document.getElementById('scary-image');
+    const customErrorScreenEl = document.getElementById('custom-error-screen');
+    
+    const audio1 = document.getElementById('audioCountdown');
+    const audio2 = document.getElementById('audioAftermath');
+    const audio3 = document.getElementById('audioSpeech');
+    const audioErr = document.getElementById('audioError');
+    
+    let count = 500;
+    let gameStarted = false;
+    let currentTitleState = "走る";
+    let isBlackoutActive = false;
+
+    const japaneseText = "ここは安全ではありません…<br>どうかここから出て行ってください…";
+    const binaryText = "01111001 01101111 01110101 01110010 00100000 01101110 01101111 01110100 00100000 01110011 01100001 01100110 01100101 00100000 01101000 01100101 01110010 01100101 00101110 00101110 00101110 00100000 01110000 01101100 01100101 01100001 01110011 01100101 00100000 01101100 01100101 01100001 01110110 01100101 00101110 00101110 00101110";
+
+    const scaryPhrases = [
+        "RUN", 
+        "YOUR NOT SAFE HERE...", 
+        "HIDE", 
+        "I'M COMING FOR YOU..."
+    ];
+
+    function spawnBackgroundText() {
+        if (isBlackoutActive) return; 
+        const word = document.createElement('div');
+        word.className = 'bg-word';
+        word.innerText = scaryPhrases[Math.floor(Math.random() * scaryPhrases.length)];
+        
+        const chosenFont = Math.random() > 0.5 ? 'Font1' : 'Font2';
+        word.style.fontFamily = chosenFont;
+
+        const randomSize = Math.floor(Math.random() * 3) + 2; 
+        word.style.fontSize = `${randomSize}rem`;
+        word.style.left = `${Math.random() * 80}%`;
+        word.style.top = `${Math.random() * 80}%`;
+        word.style.transform = `rotate(${Math.floor(Math.random() * 40) - 20}deg)`;
+
+        document.body.appendChild(word);
+
+        setTimeout(() => {
+            word.remove();
+        }, 150);
+    }
+
+    // Handles sequence tracking when OK or X is interacted with on the simulated VBS box
+    function handleVbsClose() {
+        vbsModalEl.style.display = 'none';
+        
+        // Stage 1: Display background.png instantly
+        scaryImgEl.style.display = 'block';
+
+        // Stage 2: After 5 seconds, clear the browser tab title completely
+        setTimeout(() => {
+            document.title = "‌"; // Zero-width non-renderable separator maps a clean blank state
+        }, 5000);
+
+        // Stage 3: After 10 seconds total, fade the background image to 0 over 1 second
+        setTimeout(() => {
+            scaryImgEl.style.opacity = '0';
+            setTimeout(() => {
+                scaryImgEl.style.display = 'none';
+            }, 1000);
+        }, 10000);
+
+        // Stage 4: After 20 seconds total, transition to full-screen custom error page and fire audio track
+        setTimeout(() => {
+            document.title = "エラー";
+            customErrorScreenEl.style.display = 'block';
+            
+            // Execute the newly mapped error sound track asset
+            audioErr.muted = false;
+            audioErr.play().catch(err => console.error("Failed to load game over.mp3", err));
+        }, 20000);
+    }
+
+    // Translation Watcher Loop
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && (mutation.attributeName === 'lang' || mutation.attributeName === 'class')) {
+                const currentLang = document.documentElement.getAttribute('lang') || '';
+                const bodyClass = document.body.className || '';
+                
+                if (currentLang.toLowerCase().startsWith('en') || bodyClass.includes('translated-ltr') || document.documentElement.classList.contains('translated-ltr')) {
+                    messageEl.innerHTML = binaryText;
+                } else {
+                    messageEl.innerHTML = japaneseText;
+                }
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, { attributes: true });
+    observer.observe(document.body, { attributes: true });
+
+    // Activation trigger initialized on first click instance
+    window.addEventListener('click', () => {
+        if (gameStarted) return; 
+        gameStarted = true;
+
+        document.title = currentTitleState;
+
+        menuEl.style.display = 'none';
+        counterEl.style.display = 'block';
+
+        audio1.muted = false;
+        audio1.play().catch(err => console.error(err));
+
+        tick();
+    });
+
+    function tick() {
+        count--;
+        
+        const currentTick = 500 - count; 
+        const intensity = count / 500;  
+        
+        counterEl.innerText = `He is ${count} miles away from you...`;
+
+        if (currentTick % 25 === 0) {
+            currentTitleState = (currentTitleState === "走る") ? "隠れる" : "走る";
+            document.title = currentTitleState;
+        }
+
+        if (count < 400 && count > 100) {
+            counterEl.style.color = `rgb(255, ${255 - Math.floor((1 - intensity) * 255)}, ${255 - Math.floor((1 - intensity) * 255)})`;
+        }
+
+        if (count < 250) {
+            document.body.style.backgroundColor = `rgb(${Math.floor((1 - intensity) * 50)}, 0, 0)`;
+            counterEl.style.animation = 'shake 0.5s infinite';
+            counterEl.style.animationDuration = `${0.5 - ((1 - intensity) * 0.45)}s`;
+        }
+
+        if (count <= 100) {
+            counterEl.style.color = "#ff3333";
+            counterEl.style.fontFamily = count % 2 === 0 ? 'Font1' : 'Font2';
+
+            const spawns = Math.floor(Math.random() * 3) + 1;
+            for (let i = 0; i < spawns; i++) {
+                spawnBackgroundText();
+            }
+        }
+
+        if (count <= 20 && count > 0) {
+            if (count % 5 === 0) {
+                document.body.style.backgroundColor = "#000";
+            } else if (count % 5 === 2) { 
+                document.body.style.backgroundColor = "#400";
+            }
+        }
+
+        if (count <= 0) {
+            audio1.pause();
+            audio1.currentTime = 0;
+
+            document.title = "お前は死んだ";
+
+            audio2.muted = false;
+            audio3.muted = false;
+            audio2.play().catch(err => console.error("Failed to load sound2.mp3", err));
+            audio3.play().catch(err => console.error("Failed to load sound3.mp3", err));
+            
+            document.querySelectorAll('.bg-word').forEach(el => el.remove());
+            
+            counterEl.style.display = 'none';
+            messageEl.style.display = 'block';
+            document.body.style.backgroundColor = '#000';
+
+            const finalLang = document.documentElement.getAttribute('lang') || '';
+            if (finalLang.toLowerCase().startsWith('en') || document.body.className.includes('translated')) {
+                messageEl.innerHTML = binaryText;
+            }
+
+            let toggleState = false;
+            setInterval(() => {
+                if (toggleState) {
+                    messageEl.className = 'use-font1';
+                } else {
+                    messageEl.className = 'use-font2';
+                }
+                toggleState = !toggleState;
+            }, 80); 
+
+            // Aftermath Phase 2: Fires text blackout, title adjustment, and simulated VBS box overlay after 14 seconds
+            setTimeout(() => {
+                isBlackoutActive = true;
+                
+                messageEl.style.color = '#000000';
+                messageEl.style.textShadow = 'none';
+                
+                document.title = "逃げ場はない。";
+                vbsModalEl.style.display = 'block';
+            }, 14000);
+            
+            return; 
+        }
+
+        let nextDelay = 1.5 + 129 * Math.pow(intensity, 2.5);
+        setTimeout(tick, nextDelay);
+    }
+</script>
+
+</body>
+</html>
