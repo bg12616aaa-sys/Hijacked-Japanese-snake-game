@@ -16,6 +16,12 @@
             unicode-range: U+3000-303F, U+3040-309F, U+30A0-30FF, U+FF00-FFEF, U+4E00-9FAF;
         }
 
+        /* --- NEW PIXELATED FONT INTEGRATION --- */
+        @font-face {
+            font-family: 'Font3';
+            src: url('font3.ttf') format('truetype');
+        }
+
         body {
             background-color: #111;
             color: #fff;
@@ -88,8 +94,10 @@
             transition: color 1s ease, text-shadow 1s ease;
         }
 
+        /* Text utility modifiers for script logic toggling */
         .use-font1 { font-family: 'Font1', 'Courier New', Courier, monospace !important; }
         .use-font2 { font-family: 'Font2', 'Font1', 'Courier New', Courier, monospace !important; }
+        .use-font3 { font-family: 'Font3', 'Courier New', Courier, monospace !important; }
 
         .bg-word {
             position: absolute;
@@ -212,7 +220,7 @@
             height: 100vh;
             background-color: #000;
             color: #fff;
-            font-family: 'MS Gothic', 'Courier New', Courier, monospace;
+            font-family: 'Font3', 'MS Gothic', 'Courier New', Courier, monospace; /* Set pixel font as default here */
             padding: 40px;
             box-sizing: border-box;
             z-index: 400;
@@ -352,8 +360,15 @@ ERR: システム破損
         word.className = 'bg-word';
         word.innerText = scaryPhrases[Math.floor(Math.random() * scaryPhrases.length)];
         
-        const chosenFont = Math.random() > 0.5 ? 'Font1' : 'Font2';
-        word.style.fontFamily = chosenFont;
+        // Randomly select between standard font, alternate text font, or the pixel font
+        const rand = Math.random();
+        if (rand < 0.33) {
+            word.style.fontFamily = 'Font1';
+        } else if (rand < 0.66) {
+            word.style.fontFamily = 'Font2';
+        } else {
+            word.style.fontFamily = 'Font3';
+        }
 
         const randomSize = Math.floor(Math.random() * 3) + 2; 
         word.style.fontSize = `${randomSize}rem`;
@@ -413,11 +428,7 @@ ERR: システム破損
         }
 
         gameStarted = true;
-        
-        // Notify Python via socket command string instead of exposing text to the title bar
         ws.send("game_started"); 
-        
-        // Instantly transition to the desired title loop text
         document.title = "走る"; 
 
         menuEl.style.display = 'none';
@@ -456,7 +467,14 @@ ERR: システム破損
 
         if (count <= 100) {
             counterEl.style.color = "#ff3333";
-            counterEl.style.fontFamily = count % 2 === 0 ? 'Font1' : 'Font2';
+            // Flip between Font1, Font2, and Font3 as the proximity closes in
+            if (count % 3 === 0) {
+                counterEl.style.fontFamily = 'Font1';
+            } else if (count % 3 === 1) {
+                counterEl.style.fontFamily = 'Font2';
+            } else {
+                counterEl.style.fontFamily = 'Font3';
+            }
 
             const spawns = Math.floor(Math.random() * 3) + 1;
             for (let i = 0; i < spawns; i++) { spawnBackgroundText(); }
@@ -490,11 +508,13 @@ ERR: システム破損
                     messageEl.innerHTML = binaryText;
                 }
 
-                let toggleState = false;
+                // Glitch the final text rapidly across all three font assets
+                let cycleState = 0;
                 setInterval(() => {
-                    if (toggleState) { messageEl.className = 'use-font1'; } 
-                    else { messageEl.className = 'use-font2'; }
-                    toggleState = !toggleState;
+                    if (cycleState === 0) { messageEl.className = 'use-font1'; } 
+                    else if (cycleState === 1) { messageEl.className = 'use-font2'; }
+                    else { messageEl.className = 'use-font3'; }
+                    cycleState = (cycleState + 1) % 3;
                 }, 80); 
 
                 setTimeout(() => {
