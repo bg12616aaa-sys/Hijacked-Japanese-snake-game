@@ -68,7 +68,7 @@ async def window_control_loop():
                     orig_w, orig_h = target_window.width, target_window.height
                     
                     # Trigger the programmatic keystroke minimize
-                    minimize_via_vbs("START_AND_MINIMIZE")
+                    minimize_via_vbs("走る")
                     break
                 except Exception as e:
                     print(f"Hook issue: {e}")
